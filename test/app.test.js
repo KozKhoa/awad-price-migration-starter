@@ -10,7 +10,7 @@ before(async () => {
   const dir = new URL('../migrations/', import.meta.url);
   for (const f of readdirSync(dir).filter((f) => f.endsWith('.up.sql')).sort())
     db.exec(readFileSync(new URL(f, dir), 'utf8'));          // every migration, in order
-  db.exec("INSERT INTO menu_items (name, price) VALUES ('Phở bò', 45.5), ('Trà đá', 5)");
+  db.exec("INSERT INTO menu_items (name, price, price_vnd) VALUES ('Phở bò', 45.5, 45500), ('Trà đá', 5, 5000)");
   server = createApp(db).listen(0);
   await new Promise((r) => server.once('listening', r));
   base = `http://localhost:${server.address().port}`;
@@ -22,19 +22,27 @@ const call = async (method, path, body) => {
   return { status: res.status, body: await res.json() };
 };
 
-test('GET /menu/:id returns price in thousands of dong', async () => {
-  assert.deepEqual(await call('GET', '/menu/1'), { status: 200, body: { id: 1, name: 'Phở bò', price: 45.5 } });
+test('GET /menu/:id returns price and priceVnd', async () => {
+  assert.deepEqual(await call('GET', '/menu/1'), { status: 200, body: { id: 1, name: 'Phở bò', price: 45.5, priceVnd: 45500 } });
 });
 
-test('PATCH /menu/:id changes the price', async () => {
+test('PATCH /menu/:id changes the price using price', async () => {
   const r = await call('PATCH', '/menu/2', { price: 6 });
   assert.equal(r.status, 200);
   assert.equal(r.body.price, 6);
+  assert.equal(r.body.priceVnd, 6000);
+});
+
+test('PATCH /menu/:id changes the price using priceVnd', async () => {
+  const r = await call('PATCH', '/menu/2', { priceVnd: 7500 });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.price, 7.5);
+  assert.equal(r.body.priceVnd, 7500);
 });
 
 test('POST /orders totals at the current price', async () => {
   const r = await call('POST', '/orders', { items: [{ menuItemId: 1, qty: 2 }, { menuItemId: 2, qty: 1 }] });
-  assert.deepEqual(r, { status: 201, body: { id: 1, total: 97 } });
+  assert.deepEqual(r, { status: 201, body: { id: 1, total: 98.5 } });
 });
 
 test('errors have one shape', async () => {

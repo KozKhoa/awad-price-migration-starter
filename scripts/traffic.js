@@ -13,11 +13,11 @@
 // does not show the last acknowledged write ("stale"), and any moment when NO
 // instance answers ("unavailable"). One instance being down while another
 // answers is a rolling restart, not a failure — it is counted as "rerouted".
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 
 const TARGETS = (process.env.TARGETS ?? 'http://localhost:3001,http://localhost:3002').split(',');
 const DURATION = Number(process.env.DURATION ?? 0);
-const NEW_CLIENTS = Number(process.env.NEW_CLIENTS ?? 0);
+let dynamicNewClients = Number(process.env.NEW_CLIENTS ?? 0);
 const IDS = Number(process.env.IDS ?? 2000);
 const LOG = process.env.LOG ?? 'traffic-log.txt';
 const WORKERS = 8;
@@ -66,8 +66,16 @@ async function send(method, path, body) {
 const expected = new Map(); // id -> last acknowledged price, in thousands
 const inflight = new Set();
 const created = [];         // ids of items this run created, read back later
-const pick = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
-const isNew = () => Math.random() < NEW_CLIENTS;
+function getNewClients() {
+  if (existsSync('.new_clients')) {
+    try {
+      const v = Number(readFileSync('.new_clients', 'utf8').trim());
+      if (Number.isFinite(v) && v >= 0 && v <= 1) return v;
+    } catch {}
+  }
+  return dynamicNewClients;
+}
+const isNew = () => Math.random() < getNewClients();
 
 function checkItem(r, client, where) {
   const d = r.data;
@@ -158,14 +166,20 @@ for (let id = 1; id <= FIXED; id++) {
   expected.set(id, r.data.price);
 }
 
-log(`\n=== traffic start ${new Date().toISOString()} · targets ${TARGETS.join(' ')} · new clients ${NEW_CLIENTS}`);
+log(`\n=== traffic start ${new Date().toISOString()} · targets ${TARGETS.join(' ')} · new clients ${getNewClients()}`);
 let stop = false;
 process.on('SIGINT', () => { stop = true; });
 if (DURATION) setTimeout(() => { stop = true; }, DURATION * 1000);
 
 const bad = () => n.error + n.contract + n.stale + n.unavailable;
-const tick = setInterval(() =>
-  log(`${ts()} ok=${n.ok} error=${n.error} contract=${n.contract} stale=${n.stale} unavailable=${n.unavailable} rerouted=${n.rerouted}`), 5000);
+const tick = setInterval(() => {
+  const currentRatio = getNewClients();
+  if (currentRatio !== dynamicNewClients) {
+    dynamicNewClients = currentRatio;
+    log(`${ts()} new clients ratio changed to ${dynamicNewClients}`);
+  }
+  log(`${ts()} ok=${n.ok} error=${n.error} contract=${n.contract} stale=${n.stale} unavailable=${n.unavailable} rerouted=${n.rerouted}`);
+}, 5000);
 
 await Promise.all(Array.from({ length: WORKERS }, async () => {
   while (!stop) {
