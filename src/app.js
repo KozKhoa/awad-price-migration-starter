@@ -1,10 +1,10 @@
 import { createServer } from 'node:http';
 
-// v2 of the menu service: Expand and Dual Write.
-// - Database schema has both `price` (thousands, REAL) and `price_vnd` (dong, INTEGER).
-// - Writes BOTH columns on every write path (POST /menu, PATCH /menu/:id).
-// - API offers `priceVnd` and still returns `price`.
-// - Reads from `price` (as source of truth until backfill completes).
+// v3 of the menu service: Read price_vnd, dual-write both columns.
+// - Source of truth for reads is now menu_items.price_vnd (dong, INTEGER).
+// - Database queries still select and update both columns so rolling back to v2 is 100% safe.
+// - Returns price (thousands) and priceVnd (dong).
+// - Accepts price or priceVnd on writes.
 
 const json = (res, status, body) => {
   res.writeHead(status, { 'content-type': 'application/json' });
@@ -42,8 +42,8 @@ function parsePrice(body) {
 
 export function createApp(db) {
   const q = {
-    list: db.prepare('SELECT id, name, price, price_vnd FROM menu_items ORDER BY id LIMIT ? OFFSET ?'),
-    get: db.prepare('SELECT id, name, price, price_vnd FROM menu_items WHERE id = ?'),
+    list: db.prepare('SELECT id, name, price_vnd FROM menu_items ORDER BY id LIMIT ? OFFSET ?'),
+    get: db.prepare('SELECT id, name, price_vnd FROM menu_items WHERE id = ?'),
     insert: db.prepare('INSERT INTO menu_items (name, price, price_vnd) VALUES (?, ?, ?)'),
     setPrice: db.prepare('UPDATE menu_items SET price = ?, price_vnd = ? WHERE id = ?'),
     insertOrder: db.prepare("INSERT INTO orders (created_at) VALUES (datetime('now'))"),
@@ -53,8 +53,8 @@ export function createApp(db) {
   const view = (row) => ({
     id: row.id,
     name: row.name,
-    price: row.price,
-    priceVnd: row.price_vnd ?? Math.round(row.price * 1000),
+    price: row.price_vnd / 1000,
+    priceVnd: row.price_vnd,
   });
 
   async function handle(req, res) {
@@ -108,8 +108,9 @@ export function createApp(db) {
         for (const { menuItemId, qty } of body.items) {
           const item = q.get.get(menuItemId);
           if (!item || !Number.isInteger(qty) || qty < 1) throw Object.assign(new Error(), { status: 400 });
-          q.insertLine.run(orderId, item.id, qty, item.price);
-          total += item.price * qty;
+          const unitPrice = item.price_vnd / 1000;
+          q.insertLine.run(orderId, item.id, qty, unitPrice);
+          total += unitPrice * qty;
         }
         db.exec('COMMIT');
         return json(res, 201, { id: Number(orderId), total: Math.round(total * 1000) / 1000 });
