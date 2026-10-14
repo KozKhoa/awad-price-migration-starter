@@ -1,0 +1,46 @@
+
+=== traffic start 2026-10-14T01:51:03.681Z · targets http://localhost:3001 http://localhost:3002 · new clients 0
+   5.1s ok=10445 error=0 contract=0 stale=0 unavailable=0 rerouted=0
+  10.1s ok=22700 error=0 contract=0 stale=0 unavailable=0 rerouted=0
+  15.1s ok=34983 error=0 contract=0 stale=0 unavailable=0 rerouted=0
+  19.0s http://localhost:3001 down (ECONNRESET)
+  20.1s ok=48365 error=0 contract=0 stale=0 unavailable=0 rerouted=9
+  20.2s http://localhost:3001 back
+  24.1s http://localhost:3002 down (UND_ERR_SOCKET)
+  25.1s ok=61136 error=0 contract=0 stale=0 unavailable=0 rerouted=20
+  25.4s http://localhost:3002 back
+  30.1s ok=72972 error=0 contract=0 stale=0 unavailable=0 rerouted=20
+  35.1s ok=84911 error=0 contract=0 stale=0 unavailable=0 rerouted=20
+  40.1s new clients ratio changed to 0.3
+  40.1s ok=97273 error=0 contract=0 stale=0 unavailable=0 rerouted=20
+  41.2s http://localhost:3001 down (ECONNRESET)
+  42.4s http://localhost:3001 back
+  45.1s ok=110901 error=0 contract=0 stale=0 unavailable=0 rerouted=34
+  46.3s http://localhost:3002 down (ECONNRESET)
+  47.5s http://localhost:3002 back
+  50.1s ok=124116 error=0 contract=0 stale=0 unavailable=0 rerouted=49
+  53.4s http://localhost:3001 down (ECONNRESET)
+  54.6s http://localhost:3001 back
+  55.1s ok=137722 error=0 contract=0 stale=0 unavailable=0 rerouted=57
+  57.5s http://localhost:3002 down (ECONNRESET)
+  58.8s http://localhost:3002 back
+  60.1s ok=150794 error=0 contract=0 stale=0 unavailable=0 rerouted=82
+  63.7s http://localhost:3001 down (ECONNRESET)
+  64.9s http://localhost:3001 back
+  65.1s ok=164407 error=0 contract=0 stale=0 unavailable=0 rerouted=92
+  67.8s http://localhost:3002 down (ECONNREFUSED)
+  69.0s http://localhost:3002 back
+  70.1s ok=177503 error=0 contract=0 stale=0 unavailable=0 rerouted=100
+  75.1s ok=189657 error=0 contract=0 stale=0 unavailable=0 rerouted=100
+  77.0s http://localhost:3001 down (ECONNRESET)
+  78.2s http://localhost:3001 back
+  80.1s ok=203348 error=0 contract=0 stale=0 unavailable=0 rerouted=119
+  82.1s http://localhost:3002 down (ECONNRESET)
+  83.3s http://localhost:3002 back
+  85.1s ok=216913 error=0 contract=0 stale=0 unavailable=0 rerouted=139
+  90.1s ok=229124 error=0 contract=0 stale=0 unavailable=0 rerouted=139
+  95.1s ok=241739 error=0 contract=0 stale=0 unavailable=0 rerouted=139
+ 100.1s ok=254393 error=0 contract=0 stale=0 unavailable=0 rerouted=139
+ 105.1s ok=266901 error=0 contract=0 stale=0 unavailable=0 rerouted=139
+ 106.3s FINAL ok=269898 error=0 contract=0 stale=0 unavailable=0 rerouted=139
+RESULT: zero failed requests

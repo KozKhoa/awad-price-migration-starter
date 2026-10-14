@@ -6,4 +6,10 @@ const server = createApp(open()).listen(port, () =>
   console.log(`menu service on :${port} · db ${DB_PATH} · pid ${process.pid}`));
 
 // Finish in-flight requests before exiting, so a rolling restart is clean.
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => server.close(() => process.exit(0)));
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => {
+    server.closeIdleConnections?.();
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 1000).unref();
+  });
+}

@@ -1,6 +1,6 @@
 // Backfill menu_items.price_vnd from menu_items.price in small batches.
 // Each batch runs in its own short transaction so traffic can proceed concurrently.
-// Idempotent: selects WHERE price_vnd IS NULL, so it can be stopped and resumed safely.
+// Idempotent: selects rows WHERE price_vnd IS NULL OR price_vnd <> round(price * 1000).
 import { open, DB_PATH } from '../src/db.js';
 
 const BATCH_SIZE = Number(process.env.BATCH_SIZE ?? 500);
@@ -11,25 +11,26 @@ console.log(`Starting backfill on ${DB_PATH} (batch size: ${BATCH_SIZE}, delay: 
 
 const selectBatch = db.prepare(`
   SELECT id, price FROM menu_items
-  WHERE price_vnd IS NULL
+  WHERE price_vnd IS NULL OR price_vnd <> CAST(round(price * 1000) AS INTEGER)
   LIMIT ?
 `);
 
 const updateItem = db.prepare(`
   UPDATE menu_items
   SET price_vnd = CAST(round(price * 1000) AS INTEGER)
-  WHERE id = ? AND price_vnd IS NULL
+  WHERE id = ?
 `);
 
 const countRemaining = db.prepare(`
-  SELECT count(*) AS n FROM menu_items WHERE price_vnd IS NULL
+  SELECT count(*) AS n FROM menu_items
+  WHERE price_vnd IS NULL OR price_vnd <> CAST(round(price * 1000) AS INTEGER)
 `);
 
 const totalInitial = countRemaining.get().n;
-console.log(`Initial rows missing price_vnd: ${totalInitial}`);
+console.log(`Initial rows missing or inconsistent price_vnd: ${totalInitial}`);
 
 if (totalInitial === 0) {
-  console.log('All rows already have price_vnd. Nothing to backfill.');
+  console.log('All rows already have consistent price_vnd. Nothing to backfill.');
   process.exit(0);
 }
 

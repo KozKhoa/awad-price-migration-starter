@@ -1,0 +1,110 @@
+
+=== Step 0: Initial baseline (schema 001_init, 20,000 items, v1 running) ===
+columns                id, name, price
+rows                   20000
+CONSISTENT
+
+=== Step 1: After schema expand (002_add_price_vnd applied, v1 still running) ===
+columns                id, name, price, price_vnd
+rows                   20729
+price_vnd_null         20729
+price_vnd_not_integer  0
+disagree               0
+CONSISTENT, but 20729 rows have no price_vnd yet — nothing may read price_vnd until they do
+
+=== Step 2: After rolling deploy to v2 (both instances on v2 dual-write, all writes update both columns) ===
+columns                id, name, price, price_vnd
+rows                   21448
+price_vnd_null         19453
+price_vnd_not_integer  0
+disagree               40
+INCONSISTENT
+
+=== Step 3: After backfill completion (all 20,000 items populated with price_vnd) ===
+columns                id, name, price, price_vnd
+rows                   21731
+price_vnd_null         0
+price_vnd_not_integer  0
+disagree               0
+CONSISTENT
+
+=== Step 4: After rolling deploy to v3 (both instances read price_vnd, dual-write active) ===
+columns                id, name, price, price_vnd
+rows                   22493
+price_vnd_null         0
+price_vnd_not_integer  0
+disagree               0
+CONSISTENT
+
+=== Step 5a: Rolled back to v2 under traffic (both instances on v2) ===
+columns                id, name, price, price_vnd
+rows                   23118
+price_vnd_null         0
+price_vnd_not_integer  0
+disagree               0
+CONSISTENT
+
+=== Step 5b: Rolled forward back to v3 under traffic (both instances on v3) ===
+columns                id, name, price, price_vnd
+rows                   23608
+price_vnd_null         0
+price_vnd_not_integer  0
+disagree               0
+CONSISTENT
+
+=== Step 6: After rolling deploy to v4 (both instances neither read nor write price) ===
+columns                id, name, price, price_vnd
+rows                   24254
+price_vnd_null         0
+price_vnd_not_integer  0
+disagree               1486
+INCONSISTENT
+
+=== Step 7: After schema contract 003_drop_price (price dropped, POINT OF NO RETURN) ===
+columns                id, name, price_vnd
+rows                   24660
+price_vnd_null         0
+price_vnd_not_integer  0
+CONSISTENT
+
+=== Down-Migration Verification (Separate DB: data/down_test.db) ===
+
+[migrate up on down_test.db]
+applied  001_init
+applied  002_add_price_vnd
+applied  003_drop_price
+
+[migrate status on down_test.db]
+db /home/khoa/Documents/Four years/Lập trình web nâng cao/IA#2 — Zero-downtime migration/awad-price-migration-starter/data/down_test.db
+[x] 001_init
+[x] 002_add_price_vnd
+[x] 003_drop_price
+
+[migrate:down reverts 003_drop_price]
+reverted 003_drop_price
+
+[check after reverting 003]
+columns                id, name, price_vnd, price
+rows                   0
+price_vnd_null         0
+price_vnd_not_integer  0
+disagree               0
+CONSISTENT
+
+[migrate:down reverts 002_add_price_vnd]
+reverted 002_add_price_vnd
+
+[check after reverting 002]
+columns                id, name, price
+rows                   0
+CONSISTENT
+
+[migrate:down reverts 001_init]
+reverted 001_init
+
+[migrate status after reverting all]
+db /home/khoa/Documents/Four years/Lập trình web nâng cao/IA#2 — Zero-downtime migration/awad-price-migration-starter/data/down_test.db
+[ ] 001_init
+[ ] 002_add_price_vnd
+[ ] 003_drop_price
+

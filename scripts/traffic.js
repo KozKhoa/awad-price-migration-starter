@@ -66,6 +66,7 @@ async function send(method, path, body) {
 const expected = new Map(); // id -> last acknowledged price, in thousands
 const inflight = new Set();
 const created = [];         // ids of items this run created, read back later
+const pick = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
 function getNewClients() {
   if (existsSync('.new_clients')) {
     try {
